@@ -1,4 +1,5 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 def full_network(params):
@@ -43,7 +44,7 @@ def full_network(params):
         Theta = sindy_library_tf_order2(z, dz, latent_dim, poly_order, include_sine)
 
     if params['coefficient_initialization'] == 'xavier':
-        sindy_coefficients = tf.get_variable('sindy_coefficients', shape=[library_dim,latent_dim], initializer=tf.contrib.layers.xavier_initializer())
+        sindy_coefficients = tf.get_variable('sindy_coefficients', shape=[library_dim,latent_dim], initializer=tf.glorot_uniform_initializer())
     elif params['coefficient_initialization'] == 'specified':
         sindy_coefficients = tf.get_variable('sindy_coefficients', initializer=params['init_coefficients'])
     elif params['coefficient_initialization'] == 'constant':
@@ -192,7 +193,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
     last_width=input_dim
     for i,n_units in enumerate(widths):
         W = tf.get_variable(name+'_W'+str(i), shape=[last_width,n_units],
-            initializer=tf.contrib.layers.xavier_initializer())
+            initializer=tf.glorot_uniform_initializer())
         b = tf.get_variable(name+'_b'+str(i), shape=[n_units],
             initializer=tf.constant_initializer(0.0))
         input = tf.matmul(input, W) + b
@@ -202,7 +203,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
         weights.append(W)
         biases.append(b)
     W = tf.get_variable(name+'_W'+str(len(widths)), shape=[last_width,output_dim],
-        initializer=tf.contrib.layers.xavier_initializer())
+        initializer=tf.glorot_uniform_initializer())
     b = tf.get_variable(name+'_b'+str(len(widths)), shape=[output_dim],
         initializer=tf.constant_initializer(0.0))
     input = tf.matmul(input,W) + b
@@ -233,7 +234,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
 #     last_width=input_dim
 #     for i,n_units in enumerate(widths):
 #         W = tf.get_variable(name+'_W'+str(i), shape=[last_width,n_units],
-#             initializer=tf.contrib.layers.xavier_initializer())
+#             initializer=tf.glorot_uniform_initializer())
 #         b = tf.get_variable(name+'_b'+str(i), shape=[n_units],
 #             initializer=tf.constant_initializer(0.0))
 #         input = tf.matmul(input, W) + b
@@ -243,7 +244,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
 #         weights.append(W)
 #         biases.append(b)
 #     W = tf.get_variable(name+'_W'+str(len(widths)), shape=[last_width,latent_dim],
-#         initializer=tf.contrib.layers.xavier_initializer())
+#         initializer=tf.glorot_uniform_initializer())
 #     b = tf.get_variable(name+'_b'+str(len(widths)), shape=[latent_dim],
 #         initializer=tf.constant_initializer(0.0))
 #     input = tf.matmul(input,W) + b
@@ -274,7 +275,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
 #     last_width=latent_dim
 #     for i,n_units in enumerate(widths):
 #         W = tf.get_variable(name+'_W'+str(i), shape=[last_width,n_units],
-#             initializer=tf.contrib.layers.xavier_initializer())
+#             initializer=tf.glorot_uniform_initializer())
 #         b = tf.get_variable(name+'_b'+str(i), shape=[n_units],
 #             initializer=tf.constant_initializer(0.0))
 #         input = tf.matmul(input, W) + b
@@ -284,7 +285,7 @@ def build_network_layers(input, input_dim, output_dim, widths, activation, name)
 #         weights.append(W)
 #         biases.append(b)
 #     W = tf.get_variable(name+'_W'+str(len(widths)), shape=[last_width,input_dim],
-#         initializer=tf.contrib.layers.xavier_initializer())
+#         initializer=tf.glorot_uniform_initializer())
 #     b = tf.get_variable(name+'_b'+str(len(widths)), shape=[input_dim],
 #         initializer=tf.constant_initializer(0.0))
 #     input = tf.matmul(input,W) + b
@@ -420,7 +421,7 @@ def z_derivative(input, dx, weights, biases, activation='elu'):
     elif activation == 'relu':
         for i in range(len(weights)-1):
             input = tf.matmul(input, weights[i]) + biases[i]
-            dz = tf.multiply(tf.to_float(input>0), tf.matmul(dz, weights[i]))
+            dz = tf.multiply(tf.cast(input>0, tf.float32), tf.matmul(dz, weights[i]))
             input = tf.nn.relu(input)
         dz = tf.matmul(dz, weights[-1])
     elif activation == 'sigmoid':
@@ -462,7 +463,7 @@ def z_derivative_order2(input, dx, ddx, weights, biases, activation='elu'):
             input = tf.matmul(input, weights[i]) + biases[i]
             dz_prev = tf.matmul(dz, weights[i])
             elu_derivative = tf.minimum(tf.exp(input),1.0)
-            elu_derivative2 = tf.multiply(tf.exp(input), tf.to_float(input<0))
+            elu_derivative2 = tf.multiply(tf.exp(input), tf.cast(input<0, tf.float32))
             dz = tf.multiply(elu_derivative, dz_prev)
             ddz = tf.multiply(elu_derivative2, tf.square(dz_prev)) \
                   + tf.multiply(elu_derivative, tf.matmul(ddz, weights[i]))
@@ -473,7 +474,7 @@ def z_derivative_order2(input, dx, ddx, weights, biases, activation='elu'):
         # NOTE: currently having trouble assessing accuracy of 2nd derivative due to discontinuity
         for i in range(len(weights)-1):
             input = tf.matmul(input, weights[i]) + biases[i]
-            relu_derivative = tf.to_float(input>0)
+            relu_derivative = tf.cast(input>0, tf.float32)
             dz = tf.multiply(relu_derivative, tf.matmul(dz, weights[i]))
             ddz = tf.multiply(relu_derivative, tf.matmul(ddz, weights[i]))
             input = tf.nn.relu(input)
