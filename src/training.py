@@ -1,6 +1,9 @@
 import numpy as np
 import tensorflow.compat.v1 as tf
+<<<<<<< HEAD
 tf.disable_v2_behavior()
+=======
+>>>>>>> 756c1a3 (compatability handmade)
 import pickle
 from autoencoder import full_network, define_loss
 
